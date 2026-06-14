@@ -4,19 +4,28 @@ An MCP server for [Kalendia](https://kalendia.io). Drive your calendar sync and 
 MCP client (Claude Code, Claude Desktop): list connections and calendars, read your agenda, and
 create / delete / run sync rules, all from chat.
 
-## Tools
+## Tools (24)
+
+The tool surface mirrors what a user can do in the Kalendia web app (everything reachable by an API
+token; OAuth-redirect actions like connecting Google/Microsoft or Stripe checkout stay in the web UI,
+and account deletion is intentionally not exposed).
 
 Reads (read-only):
-- `list_connections` — your connected calendar accounts (Google, Microsoft, iCloud, ICS, Zoom).
-- `list_calendars(connection_id)` — calendars under one connection.
+- `list_connections` — connected calendar accounts (Google, Microsoft, iCloud, ICS, Zoom).
+- `list_calendars(connection_id)` — live provider calendars under one connection (no Kalendia id).
+- `list_all_calendars` — every persisted calendar across accounts, with the numeric id used by rules/pages.
 - `list_sync_rules` — all mirror rules.
 - `get_agenda(connection_id, calendar_id, from_iso?, to_iso?)` — events in a window.
-- `list_scheduling_pages` — your booking pages.
+- `list_scheduling_pages` / `get_scheduling_page(page_id)` — booking pages.
+- `get_availability(slug, from_iso?, to_iso?)` — bookable slots for a page.
+- `get_billing` / `get_billing_overview` — plan, usage, limits.
+- `get_audit_log(limit?)` — recent account activity.
 
 Writes (the client confirms before firing):
-- `create_sync_rule(source_calendar_id, target_calendar_id, visibility_mode?, mirror_prefix?, enabled?)`
-- `delete_sync_rule(rule_id)` (destructive)
-- `run_sync_rule(rule_id)` — full reconcile now.
+- Sync rules: `create_sync_rule`, `run_sync_rule`, `delete_sync_rule` (destructive).
+- Connections/calendars: `connect_icloud`, `connect_ics`, `refresh_calendars`, `discover_calendars`,
+  `set_active_calendars`, `rename_calendar`, `disconnect_connection` (destructive).
+- Scheduling pages: `create_scheduling_page`, `update_scheduling_page`, `delete_scheduling_page` (destructive).
 
 ## Setup
 
@@ -54,6 +63,22 @@ Add to your MCP config (e.g. `~/.claude.json`), filling in the token:
 
 To test against a local backend instead, set `KALENDIA_API_URL` to `http://localhost:8002` and use a
 token minted on that backend.
+
+## Remote / multi-user (HTTP)
+
+`uv run kalendia-mcp --http` runs the server over Streamable HTTP as an OAuth 2.0 resource server, so
+ONE deployed instance serves many users: each request authenticates with the caller's own `kld_`
+token (no per-user env var). It serves OAuth Protected Resource Metadata at
+`/.well-known/oauth-protected-resource` (advertising Kalendia as the authorization server), rejects
+unauthenticated/invalid tokens with `401` + `WWW-Authenticate`, validates a presented `kld_` token
+against the Kalendia API, and forwards it to act as that user. Config via env:
+`KALENDIA_MCP_HOST` / `KALENDIA_MCP_PORT` (bind), `KALENDIA_MCP_URL` (public URL in the metadata),
+`KALENDIA_API_URL` (the Kalendia API).
+
+Remaining for a public launch (tracked as Phase 2): hosting/deploy of this HTTP server, and full
+OAuth authorization-server discovery (dynamic client registration + auth-code + PKCE) so clients can
+mint tokens in-flow instead of pasting a `kld_` token. Today a client connects by presenting a
+`kld_` bearer (minted in Settings > API tokens).
 
 ## Develop
 

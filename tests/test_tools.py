@@ -39,27 +39,35 @@ async def test_list_connections_shapes_output() -> None:
 
 
 @respx.mock
-async def test_list_calendars_prefers_custom_name() -> None:
+async def test_list_calendars_shapes_live_provider_view() -> None:
+    # GET /connections/{id}/calendars returns the LIVE provider view (provider CalendarDTO):
+    # provider_calendar_id/display_name/is_primary/is_writable/is_hidden, and NO db id or
+    # sync_enabled. The tool surfaces exactly those fields.
     respx.get(f"{BASE}/connections/7/calendars").mock(
         return_value=httpx.Response(
             200,
             json=[
                 {
-                    "id": 11,
-                    "connection_id": 7,
                     "provider_calendar_id": "primary",
                     "display_name": "Brad",
-                    "custom_name": "Work",
+                    "description": "",
+                    "timezone": "Europe/Bucharest",
+                    "color": "#fff",
                     "is_primary": True,
                     "is_writable": True,
-                    "sync_enabled": True,
+                    "is_hidden": False,
                 }
             ],
         )
     )
     out = await server.list_calendars(7)
-    assert out[0]["name"] == "Work"  # custom_name wins over display_name
-    assert out[0]["provider_calendar_id"] == "primary"
+    assert out[0] == {
+        "name": "Brad",
+        "provider_calendar_id": "primary",
+        "is_primary": True,
+        "is_writable": True,
+        "is_hidden": False,
+    }
 
 
 @respx.mock

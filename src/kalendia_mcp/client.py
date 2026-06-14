@@ -129,3 +129,70 @@ class KalendiaClient:
 
     async def run_sync_rule(self, rule_id: int) -> Any:
         return await self._request("POST", f"/sync/rules/{rule_id}/run")
+
+    # --- connections + calendars ---
+
+    async def get_all_calendars(self) -> Any:
+        return await self._request("GET", "/calendars")
+
+    async def connect_icloud(self, apple_id: str, app_specific_password: str) -> Any:
+        return await self._request(
+            "POST",
+            "/connections/icloud",
+            json={"apple_id": apple_id, "app_specific_password": app_specific_password},
+        )
+
+    async def connect_ics(self, feed_url: str) -> Any:
+        return await self._request("POST", "/connections/ics", json={"feed_url": feed_url})
+
+    async def discover_calendars(self, connection_id: int) -> Any:
+        return await self._request("POST", f"/connections/{connection_id}/calendars/discover")
+
+    async def refresh_calendars(self) -> Any:
+        return await self._request("POST", "/calendars/refresh")
+
+    async def disconnect_connection(self, connection_id: int) -> Any:
+        return await self._request("DELETE", f"/connections/{connection_id}")
+
+    async def set_active_calendars(self, connection_id: int, active_calendar_ids: list[int]) -> Any:
+        return await self._request(
+            "PUT",
+            f"/connections/{connection_id}/calendars/selection",
+            json={"active_calendar_ids": active_calendar_ids},
+        )
+
+    async def rename_calendar(self, calendar_id: int, custom_name: str | None) -> Any:
+        return await self._request("PATCH", f"/calendars/{calendar_id}", json={"custom_name": custom_name})
+
+    # --- scheduling pages ---
+
+    async def get_scheduling_page(self, page_id: int) -> Any:
+        return await self._request("GET", f"/scheduling-pages/{page_id}")
+
+    async def create_scheduling_page(self, payload: dict[str, Any]) -> Any:
+        return await self._request("POST", "/scheduling-pages", json=payload)
+
+    async def update_scheduling_page(self, page_id: int, payload: dict[str, Any]) -> Any:
+        return await self._request("PUT", f"/scheduling-pages/{page_id}", json=payload)
+
+    async def delete_scheduling_page(self, page_id: int) -> None:
+        await self._request("DELETE", f"/scheduling-pages/{page_id}")
+
+    async def get_availability(self, slug: str, from_iso: str | None, to_iso: str | None) -> Any:
+        params: dict[str, Any] = {}
+        if from_iso:
+            params["from"] = from_iso
+        if to_iso:
+            params["to"] = to_iso
+        return await self._request("GET", f"/scheduling-pages/{slug}/availability", params=params or None)
+
+    # --- billing + audit (read) ---
+
+    async def get_billing(self) -> Any:
+        return await self._request("GET", "/billing/me")
+
+    async def get_billing_overview(self) -> Any:
+        return await self._request("GET", "/billing/overview")
+
+    async def get_audit_log(self, limit: int) -> Any:
+        return await self._request("GET", "/audit-log", params={"limit": limit})

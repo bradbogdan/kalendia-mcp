@@ -11,10 +11,16 @@ create / delete / run sync rules.
 - `src/kalendia_mcp/client.py` — `KalendiaClient`, a thin async httpx wrapper over the Kalendia REST
   API. One method per endpoint, no business logic. Reads `KALENDIA_TOKEN` + `KALENDIA_API_URL` from
   the environment at request time. Raises `KalendiaAPIError(status_code, detail)` on any non-2xx.
-- `src/kalendia_mcp/server.py` — the `FastMCP` instance and the `@mcp.tool()` definitions. Tools are
-  thin: shape inputs/outputs, delegate to the client. Read tools are annotated `readOnlyHint`;
-  `delete_sync_rule` is `destructiveHint`; `create_sync_rule` / `run_sync_rule` are mutations.
-- Transport is stdio by default (`main()`); `--http` runs Streamable HTTP.
+- `src/kalendia_mcp/server.py` — the `FastMCP` instance and the `@mcp.tool()` definitions (24 tools
+  at parity with the web app's owner actions). Tools are thin: shape inputs/outputs, delegate to the
+  client via `_client()`. Read tools are annotated `readOnlyHint`; deletes/disconnect are
+  `destructiveHint`; other writes are mutations. `_client()` resolves the token per request: the auth
+  context's token in HTTP mode, else `KALENDIA_TOKEN`.
+- `src/kalendia_mcp/auth.py` — `KalendiaTokenVerifier` (Phase 2). In HTTP mode the server is an OAuth
+  resource server; the verifier validates a presented `kld_` token against the Kalendia API and the
+  per-request token is what tools forward (multi-user from one instance).
+- Transport is stdio by default (`main()`, single-user via env token); `--http` runs Streamable HTTP
+  (multi-user, per-request token). One `FastMCP` instance serves both; auth config is inert on stdio.
 
 ## Auth
 
