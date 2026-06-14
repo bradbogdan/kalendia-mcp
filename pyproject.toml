@@ -1,0 +1,39 @@
+[project]
+name = "kalendia-mcp"
+version = "0.1.0"
+description = "MCP server for Kalendia: drive calendar sync, connections, agenda, and scheduling from an MCP client"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.25.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+kalendia-mcp = "kalendia_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.400",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.24.0",
+    "respx>=0.21.1",
+    "ruff>=0.8.5",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.10"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
