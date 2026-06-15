@@ -11,8 +11,9 @@ create / delete / run sync rules.
 - `src/kalendia_mcp/client.py` — `KalendiaClient`, a thin async httpx wrapper over the Kalendia REST
   API. One method per endpoint, no business logic. Reads `KALENDIA_TOKEN` + `KALENDIA_API_URL` from
   the environment at request time. Raises `KalendiaAPIError(status_code, detail)` on any non-2xx.
-- `src/kalendia_mcp/server.py` — the `FastMCP` instance and the `@mcp.tool()` definitions (24 tools
-  at parity with the web app's owner actions). Tools are thin: shape inputs/outputs, delegate to the
+- `src/kalendia_mcp/server.py` — the `FastMCP` instance and the `@mcp.tool()` definitions (27 tools
+  at parity with the web app's owner actions, incl. event writes create_event / reschedule_event /
+  cancel_event). Tools are thin: shape inputs/outputs, delegate to the
   client via `_client()`. Read tools are annotated `readOnlyHint`; deletes/disconnect are
   `destructiveHint`; other writes are mutations. `_client()` resolves the token per request: the auth
   context's token in HTTP mode, else `KALENDIA_TOKEN`.
