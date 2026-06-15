@@ -184,6 +184,87 @@ async def run_sync_rule(rule_id: int) -> dict[str, Any]:
     return await _client().run_sync_rule(rule_id)
 
 
+# --- event writes (the client should confirm with the user before calling these) ---
+
+
+@mcp.tool(annotations=_MUTATING)
+async def create_event(
+    connection_id: int,
+    calendar_id: str,
+    title: str,
+    start_iso: str,
+    end_iso: str,
+    description: str | None = None,
+    location: str | None = None,
+    attendees: list[str] | None = None,
+    all_day: bool = False,
+    add_conference: bool = False,
+    notify: bool = True,
+) -> dict[str, Any]:
+    """Create a calendar event.
+
+    connection_id from list_connections; calendar_id is a writable calendar's provider_calendar_id
+    from list_calendars. start_iso / end_iso are ISO-8601 datetimes (e.g. "2026-06-20T14:00:00Z";
+    naive is read as UTC). attendees is a list of email addresses; notify=True (default) emails them
+    an invitation. add_conference=True attaches a native video link (Google Meet / Teams). The
+    target must be writable and must NOT be the target of a sync rule. Returns {event: {...}}."""
+    return await _client().create_event(
+        connection_id,
+        calendar_id,
+        {
+            "title": title,
+            "start_at": start_iso,
+            "end_at": end_iso,
+            "description": description,
+            "location": location,
+            "attendees": attendees or [],
+            "all_day": all_day,
+            "add_conference": add_conference,
+            "notify": notify,
+        },
+    )
+
+
+@mcp.tool(annotations=_MUTATING)
+async def reschedule_event(
+    connection_id: int,
+    calendar_id: str,
+    event_id: str,
+    start_iso: str,
+    end_iso: str,
+    notify: bool = True,
+) -> dict[str, Any]:
+    """Reschedule one event to a new time window (the core "move this call" action).
+
+    connection_id from list_connections; calendar_id from list_calendars; event_id is the event's
+    provider_event_id from get_agenda. For a recurring meeting, pass the specific occurrence's id
+    (get_agenda returns each occurrence separately) to move just that one. start_iso / end_iso are
+    ISO-8601 datetimes. Only the time changes: title, attendees, location, and the video link are
+    preserved. notify=True (default) emails the attendees about the new time. Returns {event:
+    {...}}."""
+    return await _client().reschedule_event(
+        connection_id,
+        calendar_id,
+        {"event_id": event_id, "start_at": start_iso, "end_at": end_iso, "notify": notify},
+    )
+
+
+@mcp.tool(annotations=_DESTRUCTIVE)
+async def cancel_event(
+    connection_id: int,
+    calendar_id: str,
+    event_id: str,
+    notify: bool = True,
+) -> dict[str, Any]:
+    """Cancel (delete) one event. Cannot be undone.
+
+    connection_id from list_connections; calendar_id from list_calendars; event_id from get_agenda.
+    notify=True (default) sends a cancellation to the attendees. An unknown event returns an error on
+    Google / Microsoft; iCloud treats an already-deleted event as success."""
+    await _client().cancel_event(connection_id, calendar_id, event_id, notify)
+    return {"deleted": True, "event_id": event_id}
+
+
 # --- connections + calendars ---
 
 

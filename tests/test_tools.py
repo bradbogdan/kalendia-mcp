@@ -115,3 +115,61 @@ async def test_get_agenda_returns_events() -> None:
     )
     out = await server.get_agenda(4, "primary", "2026-06-15T00:00:00Z", None)
     assert out["events"][0]["title"] == "Standup"
+
+
+@respx.mock
+async def test_create_event_posts_full_body() -> None:
+    route = respx.post(f"{BASE}/connections/1/calendars/primary/events").mock(
+        return_value=httpx.Response(201, json={"event": {"title": "Demo"}})
+    )
+    out = await server.create_event(
+        1,
+        "primary",
+        "Demo",
+        "2026-08-01T10:00:00Z",
+        "2026-08-01T10:30:00Z",
+        attendees=["a@x.com"],
+    )
+    assert out["event"]["title"] == "Demo"
+    body = json.loads(route.calls.last.request.content)
+    assert body == {
+        "title": "Demo",
+        "start_at": "2026-08-01T10:00:00Z",
+        "end_at": "2026-08-01T10:30:00Z",
+        "description": None,
+        "location": None,
+        "attendees": ["a@x.com"],
+        "all_day": False,
+        "add_conference": False,
+        "notify": True,
+    }
+
+
+@respx.mock
+async def test_reschedule_event_patches_event_id_and_times() -> None:
+    route = respx.patch(f"{BASE}/connections/1/calendars/primary/events").mock(
+        return_value=httpx.Response(200, json={"event": {"title": "Standup"}})
+    )
+    out = await server.reschedule_event(
+        1, "primary", "evt-9", "2026-08-02T14:00:00Z", "2026-08-02T14:30:00Z", notify=False
+    )
+    assert out["event"]["title"] == "Standup"
+    body = json.loads(route.calls.last.request.content)
+    assert body == {
+        "event_id": "evt-9",
+        "start_at": "2026-08-02T14:00:00Z",
+        "end_at": "2026-08-02T14:30:00Z",
+        "notify": False,
+    }
+
+
+@respx.mock
+async def test_cancel_event_deletes_with_query_and_returns_marker() -> None:
+    route = respx.delete(f"{BASE}/connections/1/calendars/primary/events").mock(
+        return_value=httpx.Response(200, json={"deleted": True, "event_id": "evt-9"})
+    )
+    out = await server.cancel_event(1, "primary", "evt-9")
+    assert out == {"deleted": True, "event_id": "evt-9"}
+    params = route.calls.last.request.url.params
+    assert params["event_id"] == "evt-9"
+    assert params["notify"] == "true"

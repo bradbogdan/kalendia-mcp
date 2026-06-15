@@ -130,6 +130,21 @@ class KalendiaClient:
     async def run_sync_rule(self, rule_id: int) -> Any:
         return await self._request("POST", f"/sync/rules/{rule_id}/run")
 
+    # --- event writes ---
+
+    async def create_event(self, connection_id: int, calendar_id: str, body: dict[str, Any]) -> Any:
+        return await self._request("POST", f"/connections/{connection_id}/calendars/{calendar_id}/events", json=body)
+
+    async def reschedule_event(self, connection_id: int, calendar_id: str, body: dict[str, Any]) -> Any:
+        return await self._request("PATCH", f"/connections/{connection_id}/calendars/{calendar_id}/events", json=body)
+
+    async def cancel_event(self, connection_id: int, calendar_id: str, event_id: str, notify: bool) -> None:
+        await self._request(
+            "DELETE",
+            f"/connections/{connection_id}/calendars/{calendar_id}/events",
+            params={"event_id": event_id, "notify": notify},
+        )
+
     # --- connections + calendars ---
 
     async def get_all_calendars(self) -> Any:
